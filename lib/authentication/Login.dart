@@ -1,8 +1,8 @@
-import 'dart:io';
-
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:papyrus/ui/ui.dart';
+
+import '../Home.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,8 +10,6 @@ class LoginScreen extends StatefulWidget {
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
-
-
 
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
@@ -64,148 +62,108 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.of(context).pushAndRemoveUntil(
+          PapyrusPageRoute(
+            settings: const RouteSettings(name: '/home'),
+            builder: (_) => const HomeScreen(),
+          ),
+          (route) => false,
+        );
       }
     } on FirebaseAuthException catch (e) {
-      String message = e.code;
-      if (e.code == 'user-not-found') message = 'No user found with this email';
-      if (e.code == 'wrong-password') message = 'Incorrect password';
-
+      String message;
+      switch (e.code) {
+        case 'user-not-found':
+          message = 'No user found with this email';
+          break;
+        case 'wrong-password':
+          message = 'Incorrect password';
+          break;
+        case 'invalid-credential':
+          message = 'Incorrect email or password';
+          break;
+        default:
+          message = e.message ?? 'An error occurred';
+      }
       if (mounted) {
-        showCupertinoDialog(
-          context: context,
-          builder: (_) => CupertinoAlertDialog(
-            title: const Text('Sign In Failed'),
-            content: Text(message),
-            actions: [
-              CupertinoDialogAction(
-                child: const Text('OK'),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-        );
+        showPapyrusDialog(context, title: 'Sign In Failed', message: message);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  final bool _isIOS = Platform.isIOS;
-
-  Widget _buildCupertino() {
-    return CupertinoPageScaffold(
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+  @override
+  Widget build(BuildContext context) {
+    final theme = PapyrusTheme.of(context);
+    return PapyrusScaffold(
+      padHorizontal: true,
+      body: Center(
+        child: SingleChildScrollView(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Papyrus',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  color: CupertinoColors.activeOrange,
-                ),
-              ),
-              SizedBox(height: 10,),
-              Text(
-                'Log in to your account',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.normal,
-                  color: CupertinoColors.black,
-                ),
-              ),
-              const SizedBox(height: 20),
-              CupertinoTextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                placeholder: 'Email',
-                prefix: const Padding(
-                  padding: EdgeInsets.only(left: 8),
-                  child: Icon(CupertinoIcons.mail, color: CupertinoColors.secondaryLabel, size: 20),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
-                decoration: BoxDecoration(
-                  border: Border.all(color: CupertinoColors.systemGrey4),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              if (_emailError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, left: 4),
-                  child: Text(
-                    _emailError!,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              CupertinoTextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                placeholder: 'Password',
-                prefix: const Padding(
-                  padding: EdgeInsets.only(left: 8),
-                  child: Icon(CupertinoIcons.lock, color: CupertinoColors.secondaryLabel, size: 20),
-                ),
-                suffix: Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _obscurePassword = !_obscurePassword),
-                    child: Icon(
-                      _obscurePassword ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
-                      color: CupertinoColors.secondaryLabel,
-                      size: 20,
-                    ),
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
-                decoration: BoxDecoration(
-                  border: Border.all(color: CupertinoColors.systemGrey4),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              if (_passwordError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, left: 4),
-                  child: Text(
-                    _passwordError!,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
+              PapyrusText('Papyrus', variant: PTextVariant.title, color: theme.primary),
               const SizedBox(height: 8),
-
-              // Forgot Password
+              const PapyrusText('Log in to your account', variant: PTextVariant.subtitle),
+              const SizedBox(height: 24),
+              PapyrusTextInput(
+                controller: _emailController,
+                label: 'Email',
+                placeholder: 'you@example.com',
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                errorText: _emailError,
+                leading: const Icon(CupertinoIcons.mail, size: 18),
+              ),
+              const SizedBox(height: 16),
+              PapyrusTextInput(
+                controller: _passwordController,
+                label: 'Password',
+                placeholder: 'Your password',
+                obscureText: _obscurePassword,
+                textInputAction: TextInputAction.done,
+                errorText: _passwordError,
+                onSubmitted: (_) => _submit(),
+                leading: const Icon(CupertinoIcons.lock, size: 18),
+                trailing: PapyrusIconButton(
+                  size: 28,
+                  icon: Icon(
+                    _obscurePassword ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
+                    size: 16,
+                  ),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+              const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerRight,
-                child: CupertinoButton(
-                  padding: EdgeInsets.zero,
+                child: PapyrusButton(
+                  label: 'Forgot Password?',
+                  variant: PButtonVariant.subtle,
+                  size: PButtonSize.xs,
                   onPressed: () {},
-                  child: const Text('Forgot Password?', style: TextStyle(fontSize: 14)),
                 ),
               ),
-              const SizedBox(height: 24),
-              CupertinoButton.filled(
+              const SizedBox(height: 16),
+              PapyrusButton(
+                label: 'Login',
+                fullWidth: true,
+                loading: _isLoading,
                 onPressed: _isLoading ? null : _submit,
-                borderRadius: BorderRadius.circular(8),
-                child: _isLoading
-                    ? const CupertinoActivityIndicator(color: CupertinoColors.white)
-                    : const Text('Login', style: TextStyle(fontSize: 16)),
               ),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-
-                  CupertinoButton(
-                    padding: const EdgeInsets.only(left: 4),
+                  const PapyrusText("Don't have an account?", variant: PTextVariant.caption),
+                  PapyrusButton(
+                    label: 'Sign Up',
+                    variant: PButtonVariant.subtle,
+                    size: PButtonSize.xs,
                     onPressed: () {
                       Navigator.pushReplacementNamed(context, '/signup');
                     },
-                    child: const Text('Sign Up', style: TextStyle(fontSize: 14)),
                   ),
                 ],
               ),
@@ -214,110 +172,5 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
-  }
-
-  Widget _buildMaterial() {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Form(
-            // key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text('Welcome to Folio',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 8),
-                const Text('Sign in to continue',
-                    style: TextStyle(color: Colors.grey),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 40),
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Please enter your email';
-                    if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: const Icon(Icons.lock_outlined),
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Please enter your password';
-                    if (value.length < 6) return 'Password must be at least 6 characters';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {},
-                    child: const Text('Forgot Password?'),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                      height: 20, width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Login', style: TextStyle(fontSize: 16)),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text("Don't have an account?"),
-                    TextButton(
-                      onPressed: () =>
-                          Navigator.pushReplacementNamed(context, '/signup'),
-                      child: const Text('Sign Up'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-
-  @override
-  Widget build(BuildContext context) {
-    return _isIOS ? _buildCupertino() : _buildMaterial();
   }
 }

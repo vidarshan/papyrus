@@ -1,6 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:papyrus/ui/ui.dart';
 
-
-import 'package:flutter/material.dart';
+import 'authentication/Login.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,34 +11,37 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-
-  @override
-  void dispose() {
-    super.dispose();
+  void _logout() async {
+    await FirebaseAuth.instance.signOut();
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        PapyrusPageRoute(
+          settings: const RouteSettings(name: '/login'),
+          builder: (_) => const LoginScreen(),
+        ),
+        (route) => false,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-
-
-                const Text(
-                  'Sign in to continue',
-                  style: TextStyle(color: Colors.grey),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 40),
-                const SizedBox(height: 24),
-              ],
+    final theme = PapyrusTheme.of(context);
+    return PapyrusScaffold(
+      padHorizontal: true,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            PapyrusButton(
+              label: 'Log Out',
+              variant: PButtonVariant.subtle,
+              color: theme.error,
+              onPressed: _logout,
             ),
-          ),
+          ],
+        ),
       ),
     );
   }

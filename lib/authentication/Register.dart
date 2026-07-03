@@ -1,7 +1,9 @@
-import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
+import 'package:papyrus/ui/ui.dart';
+
+import '../Home.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -11,19 +13,15 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
 
-  // --- Cupertino-only validation state ---
   String? _nameError;
   String? _emailError;
   String? _passwordError;
-
-
 
   @override
   void dispose() {
@@ -33,7 +31,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  bool _validateCupertino() {
+  bool _validate() {
     String? nameErr;
     String? emailErr;
     String? passErr;
@@ -65,38 +63,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _showError(String message) {
-
-      showCupertinoDialog(
-        context: context,
-        builder: (_) => CupertinoAlertDialog(
-          title: const Text('Registration Failed'),
-          content: Text(message),
-          actions: [
-            CupertinoDialogAction(
-              child: const Text('OK'),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      );
-
+    showPapyrusDialog(context, title: 'Registration Failed', message: message);
   }
 
   void _submit() async {
-    final isValid = _validateCupertino();
-
-    if (!isValid) return;
+    if (!_validate()) return;
 
     setState(() => _isLoading = true);
     try {
-      final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
+      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+
+      final uid = credential.user!.uid;
       await credential.user?.updateDisplayName(_nameController.text.trim());
+
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'name': _nameController.text.trim(),
+        'username': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.of(context).pushAndRemoveUntil(
+          PapyrusPageRoute(
+            settings: const RouteSettings(name: '/home'),
+            builder: (_) => const HomeScreen(),
+          ),
+          (route) => false,
+        );
       }
     } on FirebaseAuthException catch (e) {
       String message;
@@ -110,257 +106,88 @@ class _RegisterScreenState extends State<RegisterScreen> {
         case 'weak-password':
           message = 'Password must be at least 6 characters';
           break;
-        case 'operation-not-allowed':
-          message = 'Email/password accounts are not enabled';
-          break;
-        case 'too-many-requests':
-          message = 'Too many attempts. Please try again later';
-          break;
         default:
           message = 'An error occurred. Please try again';
       }
       if (mounted) _showError(message);
+    } catch (e) {
+      if (mounted) _showError('Something went wrong: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-
-
-  Widget _buildMaterial() {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-
-
-                Text(
-                  'Papyrus',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w600,
-                    color: CupertinoColors.activeOrange,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text('Create an account',
-                    style: TextStyle(color: Colors.grey),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 40),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    prefixIcon: Icon(Icons.person_outlined),
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) =>
-                  (value == null || value.isEmpty) ? 'Please enter your name' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Please enter your email';
-                    if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: const Icon(Icons.lock_outlined),
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Please enter your password';
-                    if (value.length < 6) return 'Password must be at least 6 characters';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                      height: 20, width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Sign Up', style: TextStyle(fontSize: 16)),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Forgot Password?', style: TextStyle(fontSize: 14)),
-
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── Cupertino build ──────────────────────────────────────────────
-
-  Widget _buildCupertino() {
-    return CupertinoPageScaffold(
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+  @override
+  Widget build(BuildContext context) {
+    final theme = PapyrusTheme.of(context);
+    return PapyrusScaffold(
+      padHorizontal: true,
+      body: Center(
+        child: SingleChildScrollView(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Papyrus',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  color: CupertinoColors.activeOrange,
-                ),
-              ),
-              SizedBox(height: 10,),
-              Text(
-                'Create an account',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.normal,
-                  color: CupertinoColors.black,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Name
-              CupertinoTextField(
-                controller: _nameController,
-                placeholder: 'Name',
-                prefix: const Padding(
-                  padding: EdgeInsets.only(left: 8),
-                  child: Icon(CupertinoIcons.person, color: CupertinoColors.secondaryLabel, size: 20),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
-                decoration: BoxDecoration(
-                  border: Border.all(color: CupertinoColors.systemGrey4),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              if (_nameError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, left: 4),
-                  child: Text(_nameError!,
-                      style: const TextStyle(color: CupertinoColors.destructiveRed, fontSize: 12)),
-                ),
-              const SizedBox(height: 16),
-
-              // Email
-              CupertinoTextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                placeholder: 'Email',
-                prefix: const Padding(
-                  padding: EdgeInsets.only(left: 8),
-                  child: Icon(CupertinoIcons.mail, color: CupertinoColors.secondaryLabel, size: 20),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
-                decoration: BoxDecoration(
-                  border: Border.all(color: CupertinoColors.systemGrey4),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              if (_emailError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, left: 4),
-                  child: Text(_emailError!,
-                      style: const TextStyle(color: CupertinoColors.destructiveRed, fontSize: 12)),
-                ),
-              const SizedBox(height: 16),
-
-              // Password
-              CupertinoTextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                placeholder: 'Password',
-                prefix: const Padding(
-                  padding: EdgeInsets.only(left: 8),
-                  child: Icon(CupertinoIcons.lock, color: CupertinoColors.secondaryLabel, size: 20),
-                ),
-                suffix: Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _obscurePassword = !_obscurePassword),
-                    child: Icon(
-                      _obscurePassword ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
-                      color: CupertinoColors.secondaryLabel,
-                      size: 20,
-                    ),
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
-                decoration: BoxDecoration(
-                  border: Border.all(color: CupertinoColors.systemGrey4),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              if (_passwordError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, left: 4),
-                  child: Text(_passwordError!,
-                      style: const TextStyle(color: CupertinoColors.destructiveRed, fontSize: 12)),
-                ),
+              PapyrusText('Papyrus', variant: PTextVariant.title, color: theme.primary),
+              const SizedBox(height: 8),
+              const PapyrusText('Create an account', variant: PTextVariant.subtitle),
               const SizedBox(height: 24),
-
-              CupertinoButton.filled(
-                onPressed: _isLoading ? null : _submit,
-                borderRadius: BorderRadius.circular(8),
-                child: _isLoading
-                    ? const CupertinoActivityIndicator(color: CupertinoColors.white)
-                    : const Text('Sign Up', style: TextStyle(fontSize: 16)),
+              PapyrusTextInput(
+                controller: _nameController,
+                label: 'Name',
+                placeholder: 'Your name',
+                textInputAction: TextInputAction.next,
+                errorText: _nameError,
+                leading: const Icon(CupertinoIcons.person, size: 18),
               ),
               const SizedBox(height: 16),
-
+              PapyrusTextInput(
+                controller: _emailController,
+                label: 'Email',
+                placeholder: 'you@example.com',
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                errorText: _emailError,
+                leading: const Icon(CupertinoIcons.mail, size: 18),
+              ),
+              const SizedBox(height: 16),
+              PapyrusTextInput(
+                controller: _passwordController,
+                label: 'Password',
+                placeholder: 'At least 6 characters',
+                obscureText: _obscurePassword,
+                textInputAction: TextInputAction.done,
+                errorText: _passwordError,
+                onSubmitted: (_) => _submit(),
+                leading: const Icon(CupertinoIcons.lock, size: 18),
+                trailing: PapyrusIconButton(
+                  size: 28,
+                  icon: Icon(
+                    _obscurePassword ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
+                    size: 16,
+                  ),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+              const SizedBox(height: 24),
+              PapyrusButton(
+                label: 'Sign Up',
+                fullWidth: true,
+                loading: _isLoading,
+                onPressed: _isLoading ? null : _submit,
+              ),
+              const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CupertinoButton(
-                    padding: const EdgeInsets.only(left: 4),
+                  const PapyrusText('Already have an account?', variant: PTextVariant.caption),
+                  PapyrusButton(
+                    label: 'Log In',
+                    variant: PButtonVariant.subtle,
+                    size: PButtonSize.xs,
                     onPressed: () {
                       Navigator.pushReplacementNamed(context, '/login');
                     },
-                    child: const Text('Log In', style: TextStyle(fontSize: 14)),
-                  )
-
+                  ),
                 ],
               ),
             ],
@@ -368,10 +195,5 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
     );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _buildCupertino();
   }
 }
