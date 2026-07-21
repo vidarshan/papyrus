@@ -1,9 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
+import 'package:papyrus/navigation/MainTabScreen.dart';
 import 'package:papyrus/ui/ui.dart';
-
-import '../Home.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -89,7 +88,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Navigator.of(context).pushAndRemoveUntil(
           PapyrusPageRoute(
             settings: const RouteSettings(name: '/home'),
-            builder: (_) => const HomeScreen(),
+            builder: (_) => const MainTabScreen(),
           ),
           (route) => false,
         );

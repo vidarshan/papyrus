@@ -1,8 +1,7 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:papyrus/navigation/MainTabScreen.dart';
 import 'package:papyrus/ui/ui.dart';
-
-import '../Home.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -65,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.of(context).pushAndRemoveUntil(
           PapyrusPageRoute(
             settings: const RouteSettings(name: '/home'),
-            builder: (_) => const HomeScreen(),
+            builder: (_) => const MainTabScreen(),
           ),
           (route) => false,
         );

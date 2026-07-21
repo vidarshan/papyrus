@@ -1,4 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Lets the app list PDFs across device storage via MediaStore on
+         Android 12L and below. On Android 13+ this permission has no
+         effect; MediaStore queries there only surface app-owned files, so
+         users on newer Android fall back to the manual "Browse" picker. -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
     <application
         android:label="papyrus"
         android:name="${applicationName}"
