@@ -1,5 +1,4 @@
 import 'package:flutter/widgets.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'tokens.dart';
 
 /// Semantic color/typography values consumed by every Papyrus UI component.
@@ -38,7 +37,10 @@ class PapyrusThemeData {
     primary: PColors.primary[6],
     primaryHover: PColors.primary[7],
     primaryText: PColors.white,
-    background: PColors.white,
+    // Tinted off-white rather than pure white, so surfaces (cards, sheets)
+    // sitting on top of it in the same white actually read as raised instead
+    // of blending into the page.
+    background: PColors.gray[0],
     surface: PColors.white,
     border: PColors.gray[3],
     borderFocus: PColors.primary[6],
@@ -47,7 +49,7 @@ class PapyrusThemeData {
     textDisabled: PColors.gray[4],
     error: PColors.red[7],
     success: PColors.green[7],
-    fontFamily: GoogleFonts.notoSerif().fontFamily!,
+    fontFamily: 'Plus Jakarta Sans',
   );
 }
 

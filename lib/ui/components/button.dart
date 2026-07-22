@@ -62,6 +62,7 @@ class _PapyrusButtonState extends State<PapyrusButton> {
     final theme = PapyrusTheme.of(context);
     final spec = _sizeSpecs[widget.size]!;
     final base = widget.color ?? theme.primary;
+    final pressScale = _pressed && !_disabled ? 0.97 : 1.0;
 
     Color background;
     Color foreground;
@@ -163,6 +164,9 @@ class _PapyrusButtonState extends State<PapyrusButton> {
             height: spec.height,
             width: widget.fullWidth ? double.infinity : null,
             padding: EdgeInsets.symmetric(horizontal: spec.paddingX),
+            transform: Matrix4.identity()
+              ..scaleByDouble(pressScale, pressScale, 1.0, 1.0),
+            transformAlignment: Alignment.center,
             decoration: BoxDecoration(
               color: background,
               borderRadius: BorderRadius.circular(PRadius.sm),
