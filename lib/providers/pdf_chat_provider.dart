@@ -35,17 +35,25 @@ class PdfChatProvider extends ChangeNotifier {
   String get _fileUri =>
       'gs://${FirebaseStorage.instance.bucket}/users/$_uid/pdfs/$pdfId.pdf';
 
-  // Asks Gemini to cite the page a claim came from as a Markdown link in a
-  // fixed, parseable form, so PdfChatScreen can turn "[p. 4](page:4)" into a
-  // tap that jumps the PDF viewer straight to that page.
+  // Asks Gemini to cite the page a claim came from - and the exact source
+  // sentence - as a Markdown link with a title, e.g.
+  // "[p. 4](page:4 "The Ridge model achieved an RMSE of £4,454")". The
+  // Markdown link-title slot needs no escaping beyond swapping stray double
+  // quotes, so PdfChatScreen can read the quote straight off onTapLink's
+  // title parameter without any encoding round-trip, then show it in a
+  // banner over the cited page rather than trying to highlight it in a
+  // PDF renderer that only rasterizes pages and has no text layer.
   static final _citationInstruction = Content.system(
     'When you state something that comes from a specific part of the '
-    'document, cite the page it appears on immediately after the claim, '
-    'formatted as a Markdown link in exactly this form: [p. N](page:N) - '
-    'for example [p. 4](page:4). For a claim spanning multiple pages, cite '
-    'only the first page it appears on. Only cite a page when a specific '
-    'claim is actually grounded in that page; do not add citations to '
-    'general commentary, and never invent a page number.',
+    'document, cite it immediately after the claim as a Markdown link with '
+    'a title, in exactly this form: [p. N](page:N "exact quote") - where '
+    '"exact quote" is a short excerpt (under ~20 words) copied verbatim '
+    'from page N that supports the claim, with any double quotes inside it '
+    "changed to single quotes so it doesn't break the Markdown syntax. For "
+    'example: [p. 4](page:4 "The Ridge model achieved an RMSE of £4,454"). '
+    'For a claim spanning multiple pages, cite only the first page and '
+    'quote from that page. Only cite when a specific claim is actually '
+    'grounded in the document; never invent a page number or a quote.',
   );
 
   final List<ChatMessage> messages = [];

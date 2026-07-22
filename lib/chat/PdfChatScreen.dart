@@ -73,7 +73,7 @@ class _PdfChatScreenState extends State<PdfChatScreen> {
     _provider.sendMessage(prompt);
   }
 
-  void _openViewer(BuildContext context, {int page = 1}) {
+  void _openViewer(BuildContext context, {int page = 1, String? quote}) {
     Navigator.of(context).push(
       PapyrusPageRoute(
         settings: const RouteSettings(name: '/pdf-viewer'),
@@ -81,6 +81,7 @@ class _PdfChatScreenState extends State<PdfChatScreen> {
           pdfId: widget.pdfId,
           fileName: widget.fileName,
           initialPage: page,
+          citedQuote: quote,
         ),
       ),
     );
@@ -135,8 +136,11 @@ class _PdfChatScreenState extends State<PdfChatScreen> {
                             : _MarkdownMessage(
                                 text: message.text,
                                 theme: theme,
-                                onCitationTap: (page) =>
-                                    _openViewer(context, page: page),
+                                onCitationTap: (page, quote) => _openViewer(
+                                  context,
+                                  page: page,
+                                  quote: quote,
+                                ),
                               ),
                       );
                     },
@@ -253,7 +257,7 @@ class _MarkdownMessage extends StatelessWidget {
 
   final String text;
   final PapyrusThemeData theme;
-  final ValueChanged<int> onCitationTap;
+  final void Function(int page, String? quote) onCitationTap;
 
   @override
   Widget build(BuildContext context) {
@@ -273,7 +277,9 @@ class _MarkdownMessage extends StatelessWidget {
           final page = href != null && href.startsWith('page:')
               ? int.tryParse(href.substring('page:'.length))
               : null;
-          if (page != null) onCitationTap(page);
+          if (page != null) {
+            onCitationTap(page, title.isEmpty ? null : title);
+          }
         },
         styleSheet: MarkdownStyleSheet(
           p: baseStyle,
