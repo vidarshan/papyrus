@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart' show Theme, ThemeData;
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:papyrus/chat/PdfViewerScreen.dart';
 import 'package:papyrus/providers/pdf_chat_provider.dart';
 import 'package:papyrus/ui/ui.dart';
 import 'package:provider/provider.dart';
@@ -72,6 +73,19 @@ class _PdfChatScreenState extends State<PdfChatScreen> {
     _provider.sendMessage(prompt);
   }
 
+  void _openViewer(BuildContext context, {int page = 1}) {
+    Navigator.of(context).push(
+      PapyrusPageRoute(
+        settings: const RouteSettings(name: '/pdf-viewer'),
+        builder: (_) => PdfViewerScreen(
+          pdfId: widget.pdfId,
+          fileName: widget.fileName,
+          initialPage: page,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = PapyrusTheme.of(context);
@@ -84,6 +98,12 @@ class _PdfChatScreenState extends State<PdfChatScreen> {
           icon: const Icon(CupertinoIcons.back),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: [
+          PapyrusIconButton(
+            icon: const Icon(CupertinoIcons.doc_text),
+            onPressed: () => _openViewer(context),
+          ),
+        ],
         body: Consumer<PdfChatProvider>(
           builder: (context, provider, _) {
             return Column(
@@ -115,6 +135,8 @@ class _PdfChatScreenState extends State<PdfChatScreen> {
                             : _MarkdownMessage(
                                 text: message.text,
                                 theme: theme,
+                                onCitationTap: (page) =>
+                                    _openViewer(context, page: page),
                               ),
                       );
                     },
@@ -223,10 +245,15 @@ class _ChatBubble extends StatelessWidget {
 /// [MarkdownStyleSheet] overrides it, so it's wrapped in a throwaway [Theme]
 /// even though the rest of the app avoids Material widgets.
 class _MarkdownMessage extends StatelessWidget {
-  const _MarkdownMessage({required this.text, required this.theme});
+  const _MarkdownMessage({
+    required this.text,
+    required this.theme,
+    required this.onCitationTap,
+  });
 
   final String text;
   final PapyrusThemeData theme;
+  final ValueChanged<int> onCitationTap;
 
   @override
   Widget build(BuildContext context) {
@@ -242,6 +269,12 @@ class _MarkdownMessage extends StatelessWidget {
       child: MarkdownBody(
         data: text,
         selectable: true,
+        onTapLink: (text, href, title) {
+          final page = href != null && href.startsWith('page:')
+              ? int.tryParse(href.substring('page:'.length))
+              : null;
+          if (page != null) onCitationTap(page);
+        },
         styleSheet: MarkdownStyleSheet(
           p: baseStyle,
           h1: baseStyle.copyWith(

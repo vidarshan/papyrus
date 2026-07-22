@@ -51,6 +51,26 @@ class PapyrusThemeData {
     success: PColors.green[7],
     fontFamily: 'Plus Jakarta Sans',
   );
+
+  // Surface sits one step lighter than background (rather than the other
+  // way round, like light mode) so cards still visibly lift off the page.
+  // Error/success move to lighter shades of the same scale since the dark
+  // shades used in light mode read as too low-contrast on a dark surface.
+  static final PapyrusThemeData dark = PapyrusThemeData(
+    primary: PColors.primary[6],
+    primaryHover: PColors.primary[7],
+    primaryText: PColors.white,
+    background: PColors.gray[9],
+    surface: PColors.gray[8],
+    border: PColors.gray[7],
+    borderFocus: PColors.primary[4],
+    textPrimary: PColors.gray[0],
+    textSecondary: PColors.gray[4],
+    textDisabled: PColors.gray[6],
+    error: PColors.red[5],
+    success: PColors.green[5],
+    fontFamily: 'Plus Jakarta Sans',
+  );
 }
 
 class PapyrusTheme extends InheritedWidget {

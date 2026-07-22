@@ -35,6 +35,19 @@ class PdfChatProvider extends ChangeNotifier {
   String get _fileUri =>
       'gs://${FirebaseStorage.instance.bucket}/users/$_uid/pdfs/$pdfId.pdf';
 
+  // Asks Gemini to cite the page a claim came from as a Markdown link in a
+  // fixed, parseable form, so PdfChatScreen can turn "[p. 4](page:4)" into a
+  // tap that jumps the PDF viewer straight to that page.
+  static final _citationInstruction = Content.system(
+    'When you state something that comes from a specific part of the '
+    'document, cite the page it appears on immediately after the claim, '
+    'formatted as a Markdown link in exactly this form: [p. N](page:N) - '
+    'for example [p. 4](page:4). For a claim spanning multiple pages, cite '
+    'only the first page it appears on. Only cite a page when a specific '
+    'claim is actually grounded in that page; do not add citations to '
+    'general commentary, and never invent a page number.',
+  );
+
   final List<ChatMessage> messages = [];
   bool isLoading = false;
   String? error;
@@ -78,7 +91,10 @@ class PdfChatProvider extends ChangeNotifier {
 
     if (stored.isEmpty) {
       _chat = FirebaseAI.vertexAI()
-          .generativeModel(model: 'gemini-2.5-flash')
+          .generativeModel(
+            model: 'gemini-2.5-flash',
+            systemInstruction: _citationInstruction,
+          )
           .startChat();
       await sendMessage('Please give me a brief summary of this document.');
       return;
@@ -111,7 +127,10 @@ class PdfChatProvider extends ChangeNotifier {
     }
 
     _chat = FirebaseAI.vertexAI()
-        .generativeModel(model: 'gemini-2.5-flash')
+        .generativeModel(
+          model: 'gemini-2.5-flash',
+          systemInstruction: _citationInstruction,
+        )
         .startChat(history: primedHistory);
     _documentSent = true;
     messages.addAll(stored);
