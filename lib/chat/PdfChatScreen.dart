@@ -19,6 +19,13 @@ class PdfChatScreen extends StatefulWidget {
   State<PdfChatScreen> createState() => _PdfChatScreenState();
 }
 
+const _suggestedPrompts = [
+  'Summarize the key points',
+  'Extract action items',
+  "Explain this like I'm five",
+  'What questions should I ask about this?',
+];
+
 class _PdfChatScreenState extends State<PdfChatScreen> {
   late final PdfChatProvider _provider;
   final _inputController = TextEditingController();
@@ -59,6 +66,10 @@ class _PdfChatScreenState extends State<PdfChatScreen> {
     final text = _inputController.text;
     _inputController.clear();
     _provider.sendMessage(text);
+  }
+
+  void _sendSuggestion(String prompt) {
+    _provider.sendMessage(prompt);
   }
 
   @override
@@ -116,6 +127,30 @@ class _PdfChatScreenState extends State<PdfChatScreen> {
                     ),
                     child: PapyrusAlert(message: provider.error!),
                   ),
+                SizedBox(
+                  height: 40,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: PSpacing.md,
+                    ),
+                    itemCount: _suggestedPrompts.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(width: PSpacing.xs),
+                    itemBuilder: (context, index) {
+                      final prompt = _suggestedPrompts[index];
+                      return PapyrusButton(
+                        label: prompt,
+                        variant: PButtonVariant.light,
+                        size: PButtonSize.sm,
+                        onPressed: provider.isLoading
+                            ? null
+                            : () => _sendSuggestion(prompt),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: PSpacing.xs),
                 Padding(
                   padding: const EdgeInsets.all(PSpacing.md),
                   child: Row(

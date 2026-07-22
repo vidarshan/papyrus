@@ -14,7 +14,7 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> {
   late final LibraryProvider _provider;
   String? _openingId;
-  String? _openError;
+  String? _actionError;
 
   @override
   void initState() {
@@ -32,7 +32,7 @@ class _HomeTabState extends State<HomeTab> {
   Future<void> _openChat(LibraryPdf pdf) async {
     setState(() {
       _openingId = pdf.id;
-      _openError = null;
+      _actionError = null;
     });
 
     try {
@@ -44,9 +44,25 @@ class _HomeTabState extends State<HomeTab> {
         ),
       );
     } catch (e) {
-      if (mounted) setState(() => _openError = 'Could not open ${pdf.name}.');
+      if (mounted) setState(() => _actionError = 'Could not open ${pdf.name}.');
     } finally {
       if (mounted) setState(() => _openingId = null);
+    }
+  }
+
+  Future<void> _renamePdf(LibraryPdf pdf, String newName) async {
+    try {
+      await _provider.renamePdf(pdf, newName);
+    } catch (e) {
+      if (mounted) setState(() => _actionError = 'Could not rename ${pdf.name}.');
+    }
+  }
+
+  Future<void> _deletePdf(LibraryPdf pdf) async {
+    try {
+      await _provider.deletePdf(pdf);
+    } catch (e) {
+      if (mounted) setState(() => _actionError = 'Could not delete ${pdf.name}.');
     }
   }
 
@@ -91,8 +107,8 @@ class _HomeTabState extends State<HomeTab> {
           PapyrusAlert(message: provider.error!),
           const SizedBox(height: PSpacing.md),
         ],
-        if (_openError != null) ...[
-          PapyrusAlert(message: _openError!),
+        if (_actionError != null) ...[
+          PapyrusAlert(message: _actionError!),
           const SizedBox(height: PSpacing.md),
         ],
         Row(
@@ -117,6 +133,8 @@ class _HomeTabState extends State<HomeTab> {
             pdf: pdf,
             opening: _openingId == pdf.id,
             onTap: () => _openChat(pdf),
+            onRename: (newName) => _renamePdf(pdf, newName),
+            onDelete: () => _deletePdf(pdf),
           ),
           const SizedBox(height: PSpacing.sm),
         ],

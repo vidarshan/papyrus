@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 /// A PDF that has been uploaded and indexed in Firestore under
@@ -80,6 +81,48 @@ class LibraryProvider extends ChangeNotifier {
             notifyListeners();
           },
         );
+  }
+
+  /// Renames [pdf] in place. A no-op if [newName] is blank or unchanged.
+  Future<void> renamePdf(LibraryPdf pdf, String newName) async {
+    final trimmed = newName.trim();
+    if (trimmed.isEmpty || trimmed == pdf.name) return;
+
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('pdfs')
+        .doc(pdf.id)
+        .update({'name': trimmed});
+  }
+
+  /// Deletes [pdf]'s Firestore doc, its messages subcollection (Firestore
+  /// doesn't cascade-delete subcollections on its own) and its Storage
+  /// object. The Storage delete is best-effort: by the time it runs, the
+  /// Firestore doc that drives the visible library is already gone, so a
+  /// failure there is a silent cleanup miss rather than a user-facing error.
+  Future<void> deletePdf(LibraryPdf pdf) async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final pdfRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('pdfs')
+        .doc(pdf.id);
+
+    final messages = await pdfRef.collection('messages').get();
+    final batch = FirebaseFirestore.instance.batch();
+    for (final doc in messages.docs) {
+      batch.delete(doc.reference);
+    }
+    batch.delete(pdfRef);
+    await batch.commit();
+
+    try {
+      await FirebaseStorage.instance.ref(pdf.storagePath).delete();
+    } catch (_) {
+      // Best-effort cleanup - see doc comment above.
+    }
   }
 
   @override

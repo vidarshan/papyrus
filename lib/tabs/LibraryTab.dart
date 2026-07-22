@@ -20,7 +20,7 @@ class _LibraryTabState extends State<LibraryTab> {
   late final DevicePdfsProvider _provider;
   late final LibraryProvider _libraryProvider;
   String? _openingId;
-  String? _openError;
+  String? _actionError;
 
   @override
   void initState() {
@@ -42,7 +42,7 @@ class _LibraryTabState extends State<LibraryTab> {
   Future<void> _openLibraryChat(LibraryPdf pdf) async {
     setState(() {
       _openingId = pdf.id;
-      _openError = null;
+      _actionError = null;
     });
 
     try {
@@ -54,9 +54,29 @@ class _LibraryTabState extends State<LibraryTab> {
         ),
       );
     } catch (e) {
-      if (mounted) setState(() => _openError = 'Could not open ${pdf.name}.');
+      if (mounted) setState(() => _actionError = 'Could not open ${pdf.name}.');
     } finally {
       if (mounted) setState(() => _openingId = null);
+    }
+  }
+
+  Future<void> _renamePdf(LibraryPdf pdf, String newName) async {
+    try {
+      await _libraryProvider.renamePdf(pdf, newName);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _actionError = 'Could not rename ${pdf.name}.');
+      }
+    }
+  }
+
+  Future<void> _deletePdf(LibraryPdf pdf) async {
+    try {
+      await _libraryProvider.deletePdf(pdf);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _actionError = 'Could not delete ${pdf.name}.');
+      }
     }
   }
 
@@ -65,7 +85,7 @@ class _LibraryTabState extends State<LibraryTab> {
   Future<void> _openChat(DevicePdf pdf) async {
     setState(() {
       _openingId = pdf.id;
-      _openError = null;
+      _actionError = null;
     });
 
     try {
@@ -79,7 +99,7 @@ class _LibraryTabState extends State<LibraryTab> {
         ),
       );
     } catch (e) {
-      if (mounted) setState(() => _openError = 'Could not open ${pdf.name}.');
+      if (mounted) setState(() => _actionError = 'Could not open ${pdf.name}.');
     } finally {
       if (mounted) setState(() => _openingId = null);
     }
@@ -149,8 +169,8 @@ class _LibraryTabState extends State<LibraryTab> {
           PapyrusAlert(message: provider.error!),
           const SizedBox(height: PSpacing.md),
         ],
-        if (_openError != null) ...[
-          PapyrusAlert(message: _openError!),
+        if (_actionError != null) ...[
+          PapyrusAlert(message: _actionError!),
           const SizedBox(height: PSpacing.md),
         ],
         ..._buildLibrarySection(libraryProvider),
@@ -178,6 +198,8 @@ class _LibraryTabState extends State<LibraryTab> {
           pdf: pdf,
           opening: _openingId == pdf.id,
           onTap: () => _openLibraryChat(pdf),
+          onRename: (newName) => _renamePdf(pdf, newName),
+          onDelete: () => _deletePdf(pdf),
         ),
         const SizedBox(height: PSpacing.sm),
       ],
