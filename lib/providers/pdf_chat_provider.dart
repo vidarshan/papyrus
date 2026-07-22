@@ -27,9 +27,11 @@ class PdfChatProvider extends ChangeNotifier {
   bool _documentSent = false;
 
   // Points Gemini at the PDF's existing Cloud Storage for Firebase location
-  // instead of embedding the raw bytes in the request. Firebase AI Logic
-  // reads gs:// URLs directly, which avoids the ~20MB inline-request-body
-  // limit that was breaking uploads for larger PDFs ("terminated by server").
+  // instead of embedding the raw bytes in the request, which avoids the
+  // ~20MB inline-request-body limit that breaks uploads for larger PDFs.
+  // Requires the Vertex AI Gemini API backend - the Gemini Developer API's
+  // file_data.file_uri only accepts URIs from its own separate Files API,
+  // not arbitrary gs:// Cloud Storage paths, and rejects them outright.
   String get _fileUri =>
       'gs://${FirebaseStorage.instance.bucket}/users/$_uid/pdfs/$pdfId.pdf';
 
@@ -75,7 +77,7 @@ class PdfChatProvider extends ChangeNotifier {
         .toList();
 
     if (stored.isEmpty) {
-      _chat = FirebaseAI.googleAI()
+      _chat = FirebaseAI.vertexAI()
           .generativeModel(model: 'gemini-2.5-flash')
           .startChat();
       await sendMessage('Please give me a brief summary of this document.');
@@ -108,7 +110,7 @@ class PdfChatProvider extends ChangeNotifier {
       }
     }
 
-    _chat = FirebaseAI.googleAI()
+    _chat = FirebaseAI.vertexAI()
         .generativeModel(model: 'gemini-2.5-flash')
         .startChat(history: primedHistory);
     _documentSent = true;
@@ -119,7 +121,7 @@ class PdfChatProvider extends ChangeNotifier {
 
   Future<void> sendMessage(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty || isLoading) return;
+    if (trimmed.isEmpty) return;
 
     messages.add(ChatMessage(role: ChatRole.user, text: trimmed));
     isLoading = true;
